@@ -42,52 +42,57 @@ function listenMqtt(defaultFuncs, api, ctx, globalCallback) {
 	var foreground = false;
 
 	var sessionID = Math.floor(Math.random() * 9007199254740991) + 1;
-	var username = {
-		u: ctx.userID,
-		s: sessionID,
-		chat_on: chatOn,
-		fg: foreground,
-		d: utils.getGUID(),
-		ct: "websocket",
-		//App id from facebook
-		aid: "219994525426954",
-		mqtt_sid: "",
-		cp: 3,
-		ecp: 10,
-		st: [],
-		pm: [],
-		dc: "",
-		no_auto_fg: true,
-		gas: null,
-		pack: []
-	};
+    var GUID = utils.getGUID();
+    const username = {
+        u: ctx.userID,
+        s: sessionID,
+        chat_on: chatOn,
+        fg: foreground,
+        d: GUID,
+        ct: 'websocket',
+        aid: '219994525426954',
+        aids: null,
+        mqtt_sid: '',
+        cp: 3,
+        ecp: 10,
+        st: [],
+        pm: [],
+        dc: '',
+        no_auto_fg: true,
+        gas: null,
+        pack: [],
+        p: null,
+        php_override: ""
+    };
 	var cookies = ctx.jar.getCookies("https://www.facebook.com").join("; ");
 
 	var host;
-	if (ctx.mqttEndpoint) host = `${ctx.mqttEndpoint}&sid=${sessionID}`;
-	else if (ctx.region) host = `wss://edge-chat.facebook.com/chat?region=${ctx.region.toLocaleLowerCase()}&sid=${sessionID}`;
-	else host = `wss://edge-chat.facebook.com/chat?sid=${sessionID}`;
+	if (ctx.mqttEndpoint) host = `${ctx.mqttEndpoint}&sid=${sessionID}&cid=${GUID}`;
+	else if (ctx.region) host = `wss://edge-chat.facebook.com/chat?region=${ctx.region.toLocaleLowerCase()}&sid=${sessionID}&cid=${GUID}`;
+	else host = `wss://edge-chat.facebook.com/chat?sid=${sessionID}&cid=${GUID}`;
 
-	var options = {
-		clientId: "mqttwsclient",
+	const options = {
+		clientId: 'mqttwsclient',
 		protocolId: 'MQIsdp',
 		protocolVersion: 3,
 		username: JSON.stringify(username),
 		clean: true,
 		wsOptions: {
-			headers: {
-				'Cookie': cookies,
-				'Origin': 'https://www.facebook.com',
-				'User-Agent': ctx.globalOptions.userAgent,
-				'Referer': 'https://www.facebook.com/',
-				'Host': new URL(host).hostname //'edge-chat.facebook.com'
-			},
-			origin: 'https://www.facebook.com',
-			protocolVersion: 13
+		  headers: {
+			Cookie: cookies,
+			Origin: 'https://www.facebook.com',
+			'User-Agent': ctx.globalOptions.userAgent || 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/101.0.4951.64 Safari/537.36',
+			Referer: 'https://www.facebook.com/',
+			Host: new URL(host).hostname,
+		  },
+		  origin: 'https://www.facebook.com',
+		  protocolVersion: 13,
+		  binaryType: 'arraybuffer',
 		},
-		keepalive: 10,
-		reschedulePings: false
-	};
+		keepalive: 60,
+		reschedulePings: true,
+		reconnectPeriod: 3,
+	  };	
 
 	if (typeof ctx.globalOptions.proxy != "undefined") {
 		var agent = new HttpsProxyAgent(ctx.globalOptions.proxy);
@@ -96,7 +101,7 @@ function listenMqtt(defaultFuncs, api, ctx, globalCallback) {
 
 	ctx.mqttClient = new mqtt.Client(_ => websocket(host, options.wsOptions), options);
 
-	global. mqttClient = ctx.mqttClient;
+	global.mqttClient = ctx.mqttClient;
 
 	mqttClient.on('error', function (err) {
 		log.error("listenMqtt", err);
@@ -197,10 +202,7 @@ function listenMqtt(defaultFuncs, api, ctx, globalCallback) {
 
 	});
 
-	mqttClient.on('close', function () {
-		//(function () { globalCallback("Connection closed."); })();
-		// client.end();
-	});
+	mqttClient.on('close', function () {});
 }
 
 function parseDelta(defaultFuncs, api, ctx, globalCallback, v) {
@@ -445,15 +447,22 @@ function parseDelta(defaultFuncs, api, ctx, globalCallback, v) {
 			return (function () { globalCallback(null, fmtMsg); })();
 		case "AdminTextMessage":
 			switch (v.delta.type) {
-				case "change_thread_theme":
-				case "change_thread_icon":
-				case "change_thread_quick_reaction":
-				case "change_thread_nickname":
-				case "change_thread_admins":
-				case "change_thread_approval_mode":
-				case "group_poll":
-				case "messenger_call_log":
-				case "participant_joined_group_call":
+				case 'confirm_friend_request':
+				case 'shared_album_delete':
+				case 'shared_album_addition':
+				case 'pin_messages_v2':
+                case 'unpin_messages_v2':
+                case "change_thread_theme":
+                case "change_thread_nickname":
+                case "change_thread_icon":
+                case "change_thread_quick_reaction":
+                case "change_thread_admins":
+                case "group_poll":
+                case "joinable_group_link_mode_change":
+                case "magic_words":
+                case "change_thread_approval_mode":
+                case "messenger_call_log":
+                case "participant_joined_group_call":
 					var fmtMsg;
 					try {
 						fmtMsg = utils.formatDeltaEvent(v.delta);

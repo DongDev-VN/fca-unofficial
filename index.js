@@ -451,26 +451,38 @@ function loginHelper(appState, email, password, globalOptions, callback, prCallb
       });
   }
 
-  var ctx = null;
-  var _defaultFuncs = null;
-  var api = null;
-
+  var redirect = [1, "https://m.facebook.com/"], bypass_region_err = false, ctx, _defaultFuncs, api;
+  function CheckAndFixErr(res) {
+      if (/This browser is not supported/gs.test(res.body)) {
+          let fid = (res.body.split('2Fhome.php&amp;gfid=')[1] || '').split("\\")[0];
+          if (!fid) return res;
+          bypass_region_err = true;
+          let redirectlink = `${redirect[1]}a/preferences.php?basic_site_devices=m_basic&uri=${encodeURIComponent("https://m.facebook.com/home.php")}&gfid=${fid}`;
+          return utils.get(redirectlink, jar, null, globalOptions).then(utils.saveCookies(jar));
+      }
+      return res;
+  }
+  function Redirect(res) {
+      let match = /<meta http-equiv="refresh" content="0;url=([^"]+)[^>]+>/.exec(res.body);
+      return match ? utils.get(match[1], jar, null, globalOptions).then(utils.saveCookies(jar)) : res;
+  }
   mainPromise = mainPromise
-    .then(function (res) {
-      // Hacky check for the redirection that happens on some ISPs, which doesn't return statusCode 3xx
-      var reg = /<meta http-equiv="refresh" content="0;url=([^"]+)[^>]+>/;
-      var redirect = reg.exec(res.body);
-      if (redirect && redirect[1]) return utils.get(redirect[1], jar, null, globalOptions).then(utils.saveCookies(jar));
-      return res;
-    })
-    .then(function (res) {
-      var html = res.body;
-      var stuff = buildAPI(globalOptions, html, jar);
-      ctx = stuff[0];
-      _defaultFuncs = stuff[1];
-      api = stuff[2];
-      return res;
-    });
+      .then(Redirect)
+      .then(CheckAndFixErr)
+      .then(res => {
+          if (!/MPageLoadClientMetrics/gs.test(res.body)) {
+              globalOptions.userAgent = "Mozilla/5.0 (iPhone; CPU iPhone OS 16_6 like Mac OS X)";
+              return utils.get('https://www.facebook.com/', jar, null, globalOptions, { noRef: true }).then(utils.saveCookies(jar));
+          }
+          return res;
+      })
+      .then(Redirect)
+      .then(CheckAndFixErr)
+      .then(res => {
+          let stuff = buildAPI(globalOptions, res.body, jar, bypass_region_err);
+          [ctx, _defaultFuncs, api] = stuff;
+          return res;
+      });  
 
   // given a pageID we log in as a page
   if (globalOptions.pageID) {
