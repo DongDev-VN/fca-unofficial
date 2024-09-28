@@ -10,70 +10,73 @@ var defaultLogRecordSize = 100;
 log.maxRecordSize = defaultLogRecordSize;
 
 function setOptions(globalOptions, options) {
-  Object.keys(options).map(function (key) {
-    switch (key) {
-      case 'pauseLog':
-        if (options.pauseLog) log.pause();
-        break;
-      case 'online':
-        globalOptions.online = Boolean(options.online);
-        break;
-      case 'logLevel':
-        log.level = options.logLevel;
-        globalOptions.logLevel = options.logLevel;
-        break;
-      case 'logRecordSize':
-        log.maxRecordSize = options.logRecordSize;
-        globalOptions.logRecordSize = options.logRecordSize;
-        break;
-      case 'selfListen':
-        globalOptions.selfListen = Boolean(options.selfListen);
-        break;
-      case 'listenEvents':
-        globalOptions.listenEvents = Boolean(options.listenEvents);
-        break;
-      case 'pageID':
-        globalOptions.pageID = options.pageID.toString();
-        break;
-      case 'updatePresence':
-        globalOptions.updatePresence = Boolean(options.updatePresence);
-        break;
-      case 'forceLogin':
-        globalOptions.forceLogin = Boolean(options.forceLogin);
-        break;
-      case 'userAgent':
-        globalOptions.userAgent = options.userAgent;
-        break;
-      case 'autoMarkDelivery':
-        globalOptions.autoMarkDelivery = Boolean(options.autoMarkDelivery);
-        break;
-      case 'autoMarkRead':
-        globalOptions.autoMarkRead = Boolean(options.autoMarkRead);
-        break;
-      case 'listenTyping':
-        globalOptions.listenTyping = Boolean(options.listenTyping);
-        break;
-      case 'proxy':
-        if (typeof options.proxy != "string") {
-          delete globalOptions.proxy;
-          utils.setProxy();
-        }
-        else {
-          globalOptions.proxy = options.proxy;
-          utils.setProxy(globalOptions.proxy);
-        }
-        break;
-      case 'autoReconnect':
-        globalOptions.autoReconnect = Boolean(options.autoReconnect);
-        break;
-      case 'emitReady':
-        globalOptions.emitReady = Boolean(options.emitReady);
-        break;
-      default:
-        log.warn("setOptions", "Unrecognized option given to setOptions: " + key);
-        break;
-    }
-  });
+  if (options && typeof options === 'object') {
+    Object.keys(options).map(function (key) {
+      switch (key) {
+        case 'pauseLog':
+          if (options.pauseLog) log.pause();
+          break;
+        case 'online':
+          globalOptions.online = Boolean(options.online);
+          break;
+        case 'logLevel':
+          log.level = options.logLevel;
+          globalOptions.logLevel = options.logLevel;
+          break;
+        case 'logRecordSize':
+          log.maxRecordSize = options.logRecordSize;
+          globalOptions.logRecordSize = options.logRecordSize;
+          break;
+        case 'selfListen':
+          globalOptions.selfListen = Boolean(options.selfListen);
+          break;
+        case 'listenEvents':
+          globalOptions.listenEvents = Boolean(options.listenEvents);
+          break;
+        case 'pageID':
+          globalOptions.pageID = options.pageID.toString();
+          break;
+        case 'updatePresence':
+          globalOptions.updatePresence = Boolean(options.updatePresence);
+          break;
+        case 'forceLogin':
+          globalOptions.forceLogin = Boolean(options.forceLogin);
+          break;
+        case 'userAgent':
+          globalOptions.userAgent = options.userAgent;
+          break;
+        case 'autoMarkDelivery':
+          globalOptions.autoMarkDelivery = Boolean(options.autoMarkDelivery);
+          break;
+        case 'autoMarkRead':
+          globalOptions.autoMarkRead = Boolean(options.autoMarkRead);
+          break;
+        case 'listenTyping':
+          globalOptions.listenTyping = Boolean(options.listenTyping);
+          break;
+        case 'proxy':
+          if (typeof options.proxy != "string") {
+            delete globalOptions.proxy;
+            utils.setProxy();
+          } else {
+            globalOptions.proxy = options.proxy;
+            utils.setProxy(globalOptions.proxy);
+          }
+          break;
+        case 'autoReconnect':
+          globalOptions.autoReconnect = Boolean(options.autoReconnect);
+          break;
+        case 'emitReady':
+          globalOptions.emitReady = Boolean(options.emitReady);
+          break;
+        default:
+          log.warn("setOptions", "Unrecognized option given to setOptions: " + key);
+          break;
+      }
+    });
+  } else {
+    log.warn("setOptions", "Invalid or undefined options provided.");
+  }
 }
 
 function buildAPI(globalOptions, html, jar) {
