@@ -456,36 +456,50 @@ function loginHelper(appState, email, password, globalOptions, callback, prCallb
 
   var redirect = [1, "https://m.facebook.com/"], bypass_region_err = false, ctx, _defaultFuncs, api;
   function CheckAndFixErr(res) {
-      if (/This browser is not supported/gs.test(res.body)) {
-          let fid = (res.body.split('2Fhome.php&amp;gfid=')[1] || '').split("\\")[0];
-          if (!fid) return res;
-          bypass_region_err = true;
-          let redirectlink = `${redirect[1]}a/preferences.php?basic_site_devices=m_basic&uri=${encodeURIComponent("https://m.facebook.com/home.php")}&gfid=${fid}`;
-          return utils.get(redirectlink, jar, null, globalOptions).then(utils.saveCookies(jar));
-      }
-      return res;
-  }
-  function Redirect(res) {
-      let match = /<meta http-equiv="refresh" content="0;url=([^"]+)[^>]+>/.exec(res.body);
-      return match ? utils.get(match[1], jar, null, globalOptions).then(utils.saveCookies(jar)) : res;
-  }
-  mainPromise = mainPromise
-      .then(Redirect)
-      .then(CheckAndFixErr)
-      .then(res => {
-          if (!/MPageLoadClientMetrics/gs.test(res.body)) {
-              globalOptions.userAgent = "Mozilla/5.0 (iPhone; CPU iPhone OS 16_6 like Mac OS X)";
-              return utils.get('https://www.facebook.com/', jar, null, globalOptions, { noRef: true }).then(utils.saveCookies(jar));
-          }
-          return res;
-      })
-      .then(Redirect)
-      .then(CheckAndFixErr)
-      .then(res => {
-          let stuff = buildAPI(globalOptions, res.body, jar, bypass_region_err);
-          [ctx, _defaultFuncs, api] = stuff;
-          return res;
-      });  
+        let reg_antierr = /This browser is not supported/gs;
+        if (reg_antierr.test(res.body)) {
+            const Data = JSON.stringify(res.body);
+            const Dt_Check = Data.split('2Fhome.php&amp;gfid=')[1];
+            if (Dt_Check == undefined) return res
+            const fid = Dt_Check.split("\\\\")[0];
+            if (Dt_Check == undefined || Dt_Check == "") return res
+            const final_fid = fid.split(`\\`)[0];
+            if (final_fid == undefined || final_fid == '') return res;
+            const redirectlink = redirect[1] + "a/preferences.php?basic_site_devices=m_basic&uri=" + encodeURIComponent("https://m.facebook.com/home.php") + "&gfid=" + final_fid;
+            bypass_region_err = true;
+            log.info('login', 'Bypass vùng tài khoản thành công');
+            return utils.get(redirectlink, jar, null, globalOptions).then(utils.saveCookies(jar));
+        }
+        else return res
+    }
+    function Redirect(res) {
+        var reg = /<meta http-equiv="refresh" content="0;url=([^"]+)[^>]+>/;
+        redirect = reg.exec(res.body);
+            if (redirect && redirect[1]) return utils.get(redirect[1], jar, null, globalOptions).then(utils.saveCookies(jar));
+        return res;
+    }
+
+ mainPromise = mainPromise
+        .then(res => Redirect(res))
+        .then(res => CheckAndFixErr(res))
+        .then(function(res) {
+                    let Regex_Via = /MPageLoadClientMetrics/gs;
+                    if (!Regex_Via.test(res.body)) {
+                        globalOptions.userAgent = "Mozilla/5.0 (iPhone; CPU iPhone OS 16_6 like Mac OS X) AppleWebKit/605.1.15 (KHTML, like Gecko) Version/16.6 Mobile/15E148 Safari/604.1";
+                        return utils.get('https://www.facebook.com/', jar, null, globalOptions, { noRef: true }).then(utils.saveCookies(jar));
+                    }
+                    else return res
+                })
+        .then(res => Redirect(res))
+        .then(res => CheckAndFixErr(res))
+        .then(function (res) {
+              var html = res.body;
+              var stuff = buildAPI(globalOptions, html, jar, bypass_region_err);
+              ctx = stuff[0];
+              _defaultFuncs = stuff[1];
+              api = stuff[2];
+              return res;
+        });
 
   // given a pageID we log in as a page
   if (globalOptions.pageID) {
