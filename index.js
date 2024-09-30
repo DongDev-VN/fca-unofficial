@@ -79,7 +79,7 @@ function setOptions(globalOptions, options) {
   }
 }
 
-function buildAPI(globalOptions, html, jar) {
+function buildAPI(globalOptions, html, jar, bypass_region_err) {
   var maybeCookie = jar.getCookies("https://www.facebook.com").filter(function (val) {
     return val.cookieString().split("=")[0] === "c_user";
   });
@@ -129,6 +129,7 @@ function buildAPI(globalOptions, html, jar) {
       }
       else {
         log.warn("login", "Cannot get MQTT region & sequence ID.");
+        log.info('login', 'Bypass vùng tài khoản thành công');
         noMqttData = html;
       }
     }
@@ -159,6 +160,7 @@ function buildAPI(globalOptions, html, jar) {
   };
 
   if (noMqttData) api["htmlData"] = noMqttData;
+  if (bypass_region_err) log.info('login', 'Bypass vùng tài khoản thành công');
 
   const apiFuncNames = [
     'addExternalModule',
