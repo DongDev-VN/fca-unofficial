@@ -1,19 +1,19 @@
 {
   "name": "@dongdev/fca-unofficial",
-  "version": "0.0.4",
+  "version": "0.0.5",
   "description": "A Facebook chat API without XMPP, will not be deprecated after April 30th, 2015.",
   "main": "index.js",
   "repository": {
     "type": "git",
     "url": "https://github.com/DongDev-VN/fca-unofficial.git"
   },
-  "author": "Avery, David, Maude, Benjamin, UIRI, MiraiTeam",
+  "author": "Avery, David, Maude, Benjamin, UIRI, DongDev",
   "license": "MIT",
   "dependencies": {
     "bluebird": "^2.11.0",
     "cheerio": "^1.0.0-rc.10",
     "https-proxy-agent": "^4.0.0",
-    "mqtt": "^4.2.8",
+    "mqtt": "^4.3.7",
     "npmlog": "^1.2.0",
     "request": "^2.53.0",
     "websocket-stream": "^5.5.0"
