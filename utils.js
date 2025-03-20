@@ -1210,68 +1210,99 @@ function makeDefaults(html, userID, ctx) {
 	};
 }
 
-function parseAndCheckLogin(ctx, defaultFuncs, retryCount) {
-	if (retryCount == undefined) retryCount = 0;
+function parseAndCheckLogin(ctx, defaultFuncs, retryCount = 0, sourceCall) {
+	if (sourceCall === undefined) {
+		try {
+			throw new Error();
+		} catch (e) {
+			sourceCall = e;
+		}
+	}
 	return function (data) {
-		return bluebird.try(function () {
+		return tryPromise(function () {
 			log.verbose("parseAndCheckLogin", data.body);
 			if (data.statusCode >= 500 && data.statusCode < 600) {
 				if (retryCount >= 5) {
 					throw {
-						error: "Request retry failed. Check the `res` and `statusCode` property on this error.",
+						message: "Request retry failed. Check `res` and `statusCode`.",
 						statusCode: data.statusCode,
-						res: data.body
+						res: data.body,
+						error: "Request retry failed.",
+						sourceCall
 					};
 				}
 				retryCount++;
-				var retryTime = Math.floor(Math.random() * 5000);
-				log.warn("parseAndCheckLogin", "Got status code " + data.statusCode + " - " + retryCount + ". attempt to retry in " + retryTime + " milliseconds...");
-				var url = data.request.uri.protocol + "//" + data.request.uri.hostname + data.request.uri.pathname;
-				if (data.request.headers["Content-Type"].split(";")[0] === "multipart/form-data") return bluebird.delay(retryTime).then(() => defaultFuncs.postFormData(url, ctx.jar, data.request.formData, {})).then(parseAndCheckLogin(ctx, defaultFuncs, retryCount));
-				else return bluebird.delay(retryTime).then(() => defaultFuncs.post(url, ctx.jar, data.request.formData)).then(parseAndCheckLogin(ctx, defaultFuncs, retryCount));
+				const retryTime = Math.floor(Math.random() * 5000);
+				log.warn(
+					"parseAndCheckLogin",
+					`Got status code ${data.statusCode} - Retrying in ${retryTime}ms...`
+				);
+				if (!data.request) throw new Error("Invalid request object");
+				const url = `${data.request.uri.protocol}//${data.request.uri.hostname}${data.request.uri.pathname}`;
+				const contentType = data.request.headers?.["content-type"]?.split(";")[0];
+				return delay(retryTime)
+					.then(() =>
+						contentType === "multipart/form-data"
+							? defaultFuncs.postFormData(url, ctx.jar, data.request.formData, {})
+							: defaultFuncs.post(url, ctx.jar, data.request.formData)
+					)
+					.then(parseAndCheckLogin(ctx, defaultFuncs, retryCount, sourceCall));
 			}
-			if (data.statusCode !== 200) throw new Error("parseAndCheckLogin got status code: " + data.statusCode + ". Bailing out of trying to parse response.");
-
-			var res = null;
-			try {
-				res = JSON.parse(makeParsable(data.body));
-			}
-			catch (e) {
+			if (data.statusCode !== 200) {
 				throw {
-					error: "JSON.parse error. Check the `detail` property on this error.",
-					detail: e,
-					res: data.body
+					message: `parseAndCheckLogin got status code: ${data.statusCode}.`,
+					statusCode: data.statusCode,
+					res: data.body,
+					error: `parseAndCheckLogin got status code: ${data.statusCode}.`,
+					sourceCall
 				};
 			}
-
-			// In some cases the response contains only a redirect URL which should be followed
-			if (res.redirect && data.request.method === "GET") return defaultFuncs.get(res.redirect, ctx.jar).then(parseAndCheckLogin(ctx, defaultFuncs));
-
-			// TODO: handle multiple cookies?
-			if (res.jsmods && res.jsmods.require && Array.isArray(res.jsmods.require[0]) && res.jsmods.require[0][0] === "Cookie") {
+			let res;
+			try {
+				res = JSON.parse(makeParsable(data.body));
+			} catch (e) {
+				log.error("JSON parsing failed:", data.body);
+				throw {
+					message: "Failed to parse JSON response.",
+					detail: e.message,
+					res: data.body,
+					error: "JSON.parse error.",
+					sourceCall
+				};
+			}
+			if (res.redirect && data.request.method === "GET") {
+				return defaultFuncs
+					.get(res.redirect, ctx.jar)
+					.then(parseAndCheckLogin(ctx, defaultFuncs, undefined, sourceCall));
+			}
+			if (
+				res.jsmods?.require &&
+				Array.isArray(res.jsmods.require[0]) &&
+				res.jsmods.require[0][0] === "Cookie"
+			) {
 				res.jsmods.require[0][3][0] = res.jsmods.require[0][3][0].replace("_js_", "");
-				var cookie = formatCookie(res.jsmods.require[0][3], "facebook");
-				var cookie2 = formatCookie(res.jsmods.require[0][3], "messenger");
+				const cookie = formatCookie(res.jsmods.require[0][3], "facebook");
+				const cookie2 = formatCookie(res.jsmods.require[0][3], "messenger");
 				ctx.jar.setCookie(cookie, "https://www.facebook.com");
 				ctx.jar.setCookie(cookie2, "https://www.messenger.com");
 			}
-
-			// On every request we check if we got a DTSG and we mutate the context so that we use the latest
-			// one for the next requests.
-			if (res.jsmods && Array.isArray(res.jsmods.require)) {
-				var arr = res.jsmods.require;
-				for (var i in arr) {
-					if (arr[i][0] === "DTSG" && arr[i][1] === "setToken") {
-						ctx.fb_dtsg = arr[i][3][0];
-
-						// Update ttstamp since that depends on fb_dtsg
-						ctx.ttstamp = "2";
-						for (var j = 0; j < ctx.fb_dtsg.length; j++) ctx.ttstamp += ctx.fb_dtsg.charCodeAt(j);
+			if (res.jsmods?.require) {
+				for (const arr of res.jsmods.require) {
+					if (arr[0] === "DTSG" && arr[1] === "setToken") {
+						ctx.fb_dtsg = arr[3][0];
+						ctx.ttstamp = "2" + ctx.fb_dtsg.split("").map(c => c.charCodeAt(0)).join("");
 					}
 				}
 			}
-
-			if (res.error === 1357001) throw { error: "Not logged in." };
+			if (res.error === 1357001) {
+				throw {
+					message: "Facebook blocked login. Please check your account.",
+					error: "Not logged in.",
+					res,
+					statusCode: data.statusCode,
+					sourceCall
+				};
+			}
 			return res;
 		});
 	};
