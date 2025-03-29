@@ -4,37 +4,10 @@
 
 <h2 align="center"><b>Unoffcial Facebook Chat API</b></h2><br>This package is created by <b>DongDev</b>
 
-![Image](https://i.imgur.com/nFCeYmQ.jpeg)
+![Image](https://files.catbox.moe/8urnyq.png)
 
 _Disclaimer_: We are not responsible if your account gets banned for spammy activities such as sending lots of messages to people you don't know, sending messages very quickly, sending spammy looking URLs, logging in and out very quickly... Be responsible Facebook citizens.
 
-See [below](#projects-using-this-api) for projects using this API.
-
-# 🤖 Features:
-
-- [X] Once the error is detected it will automatically relogin the appstate.
-- [X] If the appstate itself is logged out it will automatically logged out and you can resubmit it again, But aside of that, if it has an automated behavior, it will relogin then it will dismiss automatically and refreshes the login.
-
-![Image](https://i.imgur.com/Pt6oCS0.jpeg)
-
-- [X] Added a feature where if the account is locked/suspended, it will stop the login process and shows the information and why it was locked/suspended.
-
-![Image](https://i.imgur.com/R0lzR6R.jpeg)
-![Image](https://i.imgur.com/PPE3fB5.jpeg)
-
-- [X] Added api.stopListenMqtt()
-- [X] Added api.getRegion()
-- [X] Added api.setProfileGuard()
-- [X] Added api.addFunctions()
-- [X] Added api.getBotInitialData()
-- [X] Added refreshFb_dtsg (*Facebook's dynamic token security generation*): This will automatically refresh every 12:00 AM in GMT+8 PH time.
-- [X] Added a detection if it's locked or suspended (*will show the information about the lock/suspension*)
-- [X] Added randomUserAgent on setOptions (*experimental*)
-- [X] Added bypassRegion on setOptions (*choose between PRN, PNB, HKG, SYD, VLL, LLA, SIN..., experimental*)
-- [X] Added a userAgent that has a possibility for less logout on accounts (*contributor to jonellcc*)
-- [X] Tested on Mirai/Autobot (*try on Xavia or Goat*)
-
-> You can use cookies editor available in kiwi browser, edge and chrome extension for PC.
 > We the @dongdev/fca-unofficiala team/contributors are recommending you to use the Firefox app for less logout, or use this website if you have no access on these browsers specially iOS user.
 
 If you encounter errors on fca, you can contact me [here](https://www.facebook.com/minhdong.dev)
