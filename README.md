@@ -1,38 +1,74 @@
-This repo is a fork from main repo and will usually have new features bundled faster than main repo (and maybe bundle some bugs, too).
+<div align="center">
 
-# Unofficial Facebook Chat API
-<img alt="version" src="https://img.shields.io/github/package-json/v/miraiPr0ject/fca-unofficial?label=github&style=flat-square">
+![20241210_183831](https://files.catbox.moe/4rl0za.webp)
 
-Facebook now has an official API for chat bots [here](https://developers.facebook.com/docs/messenger-platform).
+<h2 align="center"><b>Unoffcial Facebook Chat API</b></h2><br>This package is created by <b>DongDev</b>
 
-This API is the only way to automate chat functionalities on a user account. We do this by emulating the browser. This means doing the exact same GET/POST requests and tricking Facebook into thinking we're accessing the website normally. Because we're doing it this way, this API won't work with an auth token but requires the credentials of a Facebook account.
+![Image](https://i.imgur.com/nFCeYmQ.jpeg)
 
 _Disclaimer_: We are not responsible if your account gets banned for spammy activities such as sending lots of messages to people you don't know, sending messages very quickly, sending spammy looking URLs, logging in and out very quickly... Be responsible Facebook citizens.
 
 See [below](#projects-using-this-api) for projects using this API.
 
-See the [full changelog](/CHANGELOG.md) for release details.
+# 🤖 Features:
+
+- [X] Once the error is detected it will automatically relogin the appstate.
+- [X] If the appstate itself is logged out it will automatically logged out and you can resubmit it again, But aside of that, if it has an automated behavior, it will relogin then it will dismiss automatically and refreshes the login.
+
+![Image](https://i.imgur.com/Pt6oCS0.jpeg)
+
+- [X] Added a feature where if the account is locked/suspended, it will stop the login process and shows the information and why it was locked/suspended.
+
+![Image](https://i.imgur.com/R0lzR6R.jpeg)
+![Image](https://i.imgur.com/PPE3fB5.jpeg)
+
+- [X] Added api.stopListenMqtt()
+- [X] Added api.getRegion()
+- [X] Added api.setProfileGuard()
+- [X] Added api.addFunctions()
+- [X] Added api.getBotInitialData()
+- [X] Added refreshFb_dtsg (*Facebook's dynamic token security generation*): This will automatically refresh every 12:00 AM in GMT+8 PH time.
+- [X] Added a detection if it's locked or suspended (*will show the information about the lock/suspension*)
+- [X] Added randomUserAgent on setOptions (*experimental*)
+- [X] Added bypassRegion on setOptions (*choose between PRN, PNB, HKG, SYD, VLL, LLA, SIN..., experimental*)
+- [X] Added a userAgent that has a possibility for less logout on accounts (*contributor to jonellcc*)
+- [X] Tested on Mirai/Autobot (*try on Xavia or Goat*)
+
+> You can use cookies editor available in kiwi browser, edge and chrome extension for PC.
+> We the @dongdev/fca-unofficiala team/contributors are recommending you to use the Firefox app for less logout, or use this website if you have no access on these browsers specially iOS user.
+
+If you encounter errors on fca, you can contact me [here](https://www.facebook.com/minhdong.dev)
+
+`</div>`
+
+Facebook now has an official API for chat bots [here](https://developers.facebook.com/docs/messenger-platform).
+
+This API is the only way to automate chat functionalities on a user account. We do this by emulating the browser. This means doing the exact same GET/POST requests and tricking Facebook into thinking we're accessing the website normally. Because we're doing it this way, this API won't work with an auth token but requires the credentials of a Facebook account.
 
 ## Install
-If you just want to use fca-unofficial, you should use this command:
-```bash
-npm install @miraipr0ject/fca-unofficial
-```
-It will download `fca-unofficial` from NPM repositories
 
-## Testing your bots
-If you want to test your bots without creating another account on Facebook, you can use [Facebook Whitehat Accounts](https://www.facebook.com/whitehat/accounts/).
+If you just want to use ws3-fca, you should use this command:
+
+```bash
+npm install @dongdev/fca-unofficial@latest
+```
+
+It will download @dongdev/fca-unofficial from NPM repositories
 
 ## Example Usage
+
 ```javascript
-const login = require("fca-unofficial");
+const login = require("@dongdev/fca-unofficial");
 
 // Create simple echo bot
-login({email: "FB_EMAIL", password: "FB_PASSWORD"}, (err, api) => {
-    if(err) return console.error(err);
-
-    api.listen((err, message) => {
-        api.sendMessage(message.body, message.threadID);
+login({
+  appState: []
+}, {
+    //setOptions will be here
+} (err, api) => {
+    if (err) return utils.error(err);
+    api.listenMqtt((err, event) => {
+        api.sendMessage(event.body, event.threadID);
     });
 });
 ```
@@ -41,17 +77,14 @@ Result:
 
 <img width="517" alt="screen shot 2016-11-04 at 14 36 00" src="https://cloud.githubusercontent.com/assets/4534692/20023545/f8c24130-a29d-11e6-9ef7-47568bdbc1f2.png">
 
-
-## Documentation
-
-You can see it [here](DOCS.md).
-
 ## Main Functionality
 
 ### Sending a message
+
 #### api.sendMessage(message, threadID[, callback][, messageID])
 
 Various types of message can be sent:
+
 * *Regular:* set field `body` to the desired message as a string.
 * *Sticker:* set a field `sticker` to the desired sticker ID.
 * *File or image:* Set field `attachment` to a readable stream or an array of readable streams.
@@ -63,10 +96,13 @@ Note that a message can only be a regular message (which can be empty) and optio
 __Tip__: to find your own ID, you can look inside the cookies. The `userID` is under the name `c_user`.
 
 __Example (Basic Message)__
-```js
-const login = require("fca-unofficial");
 
-login({email: "FB_EMAIL", password: "FB_PASSWORD"}, (err, api) => {
+```js
+const login = require("@dongdev/fca-unofficial");
+
+login({ 
+    appState: []
+}, (err, api) => {
     if(err) return console.error(err);
 
     var yourID = "000000000000000";
@@ -76,10 +112,13 @@ login({email: "FB_EMAIL", password: "FB_PASSWORD"}, (err, api) => {
 ```
 
 __Example (File upload)__
-```js
-const login = require("fca-unofficial");
 
-login({email: "FB_EMAIL", password: "FB_PASSWORD"}, (err, api) => {
+```js
+const login = require("@dongdev/fca-unofficial");
+
+login({ 
+    appState: []
+}, (err, api) => {
     if(err) return console.error(err);
 
     // Note this example uploads an image called image.jpg
@@ -92,7 +131,8 @@ login({email: "FB_EMAIL", password: "FB_PASSWORD"}, (err, api) => {
 });
 ```
 
-------------------------------------
+---
+
 ### Saving session.
 
 To avoid logging in every time you should save AppState (cookies etc.) to a file, then you can use it without having password in your scripts.
@@ -101,9 +141,11 @@ __Example__
 
 ```js
 const fs = require("fs");
-const login = require("fca-unofficial");
+const login = require("@dongdev/fca-unofficial");
 
-var credentials = {email: "FB_EMAIL", password: "FB_PASSWORD"};
+var credentials = { 
+    appState: []
+};
 
 login(credentials, (err, api) => {
     if(err) return console.error(err);
@@ -114,10 +156,11 @@ login(credentials, (err, api) => {
 
 Alternative: Use [c3c-fbstate](https://github.com/c3cbot/c3c-fbstate) to get fbstate.json (appstate.json)
 
-------------------------------------
+---
 
 ### Listening to a chat
-#### api.listen(callback)
+
+#### api.listenMqtt(callback)
 
 Listen watches for messages sent in a chat. By default this won't receive events (joining/leaving a chat, title change etc…) but it can be activated with `api.setOptions({listenEvents: true})`. This will by default ignore messages sent by the current account, you can enable listening to your own messages with `api.setOptions({selfListen: true})`.
 
@@ -125,7 +168,7 @@ __Example__
 
 ```js
 const fs = require("fs");
-const login = require("fca-unofficial");
+const login = require("@dongdev/fca-unofficial");
 
 // Simple echo bot. It will repeat everything that you say.
 // Will stop when you say '/stop'
@@ -135,7 +178,7 @@ login({appState: JSON.parse(fs.readFileSync('appstate.json', 'utf8'))}, (err, ap
     api.setOptions({listenEvents: true});
 
     var stopListening = api.listenMqtt((err, event) => {
-        if(err) return console.error(err);
+        if( err) return console.error(err);
 
         api.markAsRead(event.threadID, (err) => {
             if(err) console.error(err);
@@ -157,38 +200,8 @@ login({appState: JSON.parse(fs.readFileSync('appstate.json', 'utf8'))}, (err, ap
 });
 ```
 
-## FAQS
+`<a name="projects-using-this-api"></a>`
 
-1. How do I run tests?
-> For tests, create a `test-config.json` file that resembles `example-config.json` and put it in the `test` directory. From the root >directory, run `npm test`.
-
-2. Why doesn't `sendMessage` always work when I'm logged in as a page?
-> Pages can't start conversations with users directly; this is to prevent pages from spamming users.
-
-3. What do I do when `login` doesn't work?
-> First check that you can login to Facebook using the website. If login approvals are enabled, you might be logging in incorrectly. For how to handle login approvals, read our docs on [`login`](DOCS.md#login).
-
-4. How can I avoid logging in every time?  Can I log into a previous session?
-> We support caching everything relevant for you to bypass login. `api.getAppState()` returns an object that you can save and pass into login as `{appState: mySavedAppState}` instead of the credentials object.  If this fails, your session has expired.
-
-5. Do you support sending messages as a page?
-> Yes, set the pageID option on login (this doesn't work if you set it using api.setOptions, it affects the login process).
-> ```js
-> login(credentials, {pageID: "000000000000000"}, (err, api) => { … }
-> ```
-
-6. I'm getting some crazy weird syntax error like `SyntaxError: Unexpected token [`!!!
-> Please try to update your version of node.js before submitting an issue of this nature.  We like to use new language features.
-
-7. I don't want all of these logging messages!
-> You can use `api.setOptions` to silence the logging. You get the `api` object from `login` (see example above). Do
-> ```js
-> api.setOptions({
->     logLevel: "silent"
-> });
-> ```
-
-<a name="projects-using-this-api"></a>
 ## Projects using this API:
 
 - [c3c](https://github.com/lequanglam/c3c) - A bot that can be customizable using plugins. Support Facebook & Discord.

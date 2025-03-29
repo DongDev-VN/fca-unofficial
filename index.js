@@ -1,13 +1,68 @@
 "use strict";
-
 const utils = require("./utils");
 const log = require("npmlog");
+const axios = require("axios");
+const { execSync } = require("child_process");
+const fs = require("fs");
+const path = require("path");
+const models = require("./lib/database/models");
+const logger = require("./lib/logger");
 let checkVerified = null;
 const defaultLogRecordSize = 100;
 log.maxRecordSize = defaultLogRecordSize;
+const defaultConfig = {
+  autoUpdate: true,
+  mqtt: {
+    enabled: true,
+    reconnectInterval: 3600,
+  }
+};
+const configPath = path.join(process.cwd(), "fca-config.json");
+let config;
+if (!fs.existsSync(configPath)) {
+  fs.writeFileSync(configPath, JSON.stringify(defaultConfig, null, 2));
+  config = defaultConfig;
+} else {
+  try {
+    const fileContent = fs.readFileSync(configPath, 'utf8');
+    config = JSON.parse(fileContent);
+    config = { ...defaultConfig, ...config };
+  } catch (err) {
+    logger("Error reading config file, using defaults", "error");
+    config = defaultConfig;
+  }
+}
+global.fca = {
+  config: config
+};
+async function checkForUpdates() {
+  if (!global.fca.config.autoUpdate) {
+    logger("Auto update is disabled", "info");
+  }
+  try {
+    const response = await axios.get("https://raw.githubusercontent.com/DongDev-VN/fca-unofficial/refs/heads/main/package.json");
+    const remoteVersion = response.data.version;
+    const localPackage = JSON.parse(fs.readFileSync(path.join(__dirname, "package.json"), "utf8"));
+    const localVersion = localPackage.version;
+    if (remoteVersion !== localVersion) {
+      logger(`New version available: ${remoteVersion}`, "FCA-UPDATE");
+      logger("Installing latest version...", "FCA-UPDATE");
+      execSync(`npm i ${localPackage.name}@latest`);
+      logger("Update completed! Please restart your application", "FCA-UPDATE");
+      process.exit(1);
+    } else {
+      logger(`You are using the latest version: ${localVersion}`, 'info');
+    }
+  } catch (err) {
+    logger("Failed to check for updates:", err, "error");
+  }
+}
+if (global.fca.config.autoUpdate) {
+  checkForUpdates();
+}
 const Boolean_Option = [
   "online",
-  "selfListen",
+  "selfListen", 
   "listenEvents",
   "updatePresence",
   "forceLogin",
@@ -92,18 +147,17 @@ function buildAPI(globalOptions, html, jar) {
         "Error retrieving userID. This can be caused by a lot of things, including getting blocked by Facebook for logging in from an unknown location. Try logging in with a browser to verify.",
     };
   }
-  if (html.indexOf("/checkpoint/block/?next") > -1) {
-    log.warn(
-      "login",
-      "Checkpoint detected. Please log in with a browser to verify."
-    );
+  if (html.indexOf("/checkpoint/block/?next") > -1 || html.indexOf("/checkpoint/?next") > -1) {
+    throw {
+      error: "Checkpoint detected. Please log in with a browser to verify.", 
+    }
   }
   const userID = maybeCookie[0]
     .cookieString()
     .split("=")[1]
     .toString();
   const i_userID = objCookie.i_user || null;
-  log.info("login", `Logged in as ${userID}`);
+  logger(`Logged in as ${userID}`, 'info');
   try {
     clearInterval(checkVerified);
   } catch (_) {}
@@ -116,7 +170,7 @@ function buildAPI(globalOptions, html, jar) {
       const url = new URL(mqttEndpoint);
       region = url.searchParams.get("region")?.toUpperCase() || "PRN";
     }
-    log.info("login", `Sever region ${region}`);
+    logger(`Sever region ${region}`, 'info');
   } catch (e) {
     log.warning("login", "Not MQTT endpoint");
   }
@@ -124,6 +178,16 @@ function buildAPI(globalOptions, html, jar) {
   if (tokenMatch) {
     fb_dtsg = tokenMatch[1];
   }
+  (async () => {
+    try {
+      await models.sequelize.authenticate();
+      await models.syncAll();
+    } catch (error) {
+      console.error(error);
+      console.error('Database connection failed:', error.message);
+    }
+  })();
+  logger(`FCA fix by DongDev`, 'info');
   const ctx = {
     userID: userID,
     i_userID: i_userID,
@@ -161,16 +225,17 @@ function buildAPI(globalOptions, html, jar) {
       api[v.replace(".js", "")] = require("./src/" + v)(defaultFuncs, api, ctx);
     });
   api.listen = api.listenMqtt;
+  setInterval(checkForUpdates, 1000 * 60 * 60 * 24);
   setInterval(async () => {
     api
       .refreshFb_dtsg()
       .then(() => {
-        console.log("Successfully refreshed fb_dtsg");
+        logger("Successfully refreshed fb_dtsg", 'info');
       })
       .catch((err) => {
         console.error("An error occurred while refreshing fb_dtsg", err);
       });
-  }, 1000 * 60 * 60 * 48);
+  }, 1000 * 60 * 60 * 24);
   return [ctx, defaultFuncs, api];
 }
 function loginHelper(
@@ -248,12 +313,6 @@ function loginHelper(
       return res;
     })
     .then(function(res) {
-      if (res.body.indexOf("checkpoint") > -1) {
-        log.warn(
-          "login",
-          "Checkpoint detected. Please log in with a browser to verify."
-        );
-      }
       const html = res.body;
       const stuff = buildAPI(globalOptions, html, jar);
       ctx = stuff[0];
@@ -293,7 +352,7 @@ function loginHelper(
   }
   mainPromise
     .then(function() {
-      log.info("login", "Done logging in.");
+      logger("Done logging in", 'info');
       return callback(null, api);
     })
     .catch(function(e) {
@@ -355,4 +414,5 @@ function login(loginData, options, callback) {
   );
   return returnPromise;
 }
+
 module.exports = login;

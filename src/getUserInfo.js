@@ -5,9 +5,7 @@ const log = require("npmlog");
 
 function formatData(data) {
 	const retObj = {};
-
 	for (const prop in data) {
-		// eslint-disable-next-line no-prototype-builtins
 		if (data.hasOwnProperty(prop)) {
 			const innerObj = data[prop];
 			retObj[prop] = {
@@ -25,7 +23,6 @@ function formatData(data) {
 			};
 		}
 	}
-
 	return retObj;
 }
 
@@ -37,7 +34,6 @@ module.exports = function (defaultFuncs, api, ctx) {
 			resolveFunc = resolve;
 			rejectFunc = reject;
 		});
-
 		if (!callback) {
 			callback = function (err, friendList) {
 				if (err) {
@@ -46,11 +42,9 @@ module.exports = function (defaultFuncs, api, ctx) {
 				resolveFunc(friendList);
 			};
 		}
-
 		if (utils.getType(id) !== "Array") {
 			id = [id];
 		}
-
 		const form = {};
 		id.map(function (v, i) {
 			form["ids[" + i + "]"] = v;
