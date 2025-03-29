@@ -20,7 +20,7 @@ This API is the only way to automate chat functionalities on a user account. We 
 
 ## Install
 
-If you just want to use ws3-fca, you should use this command:
+If you just want to use @dongdev/fca-unofficial, you should use this command:
 
 ```bash
 npm install @dongdev/fca-unofficial@latest
@@ -31,19 +31,19 @@ It will download @dongdev/fca-unofficial from NPM repositories
 ## Example Usage
 
 ```javascript
+
 const login = require("@dongdev/fca-unofficial");
 
-// Create simple echo bot
-login({
-  appState: []
-}, {
-    //setOptions will be here
-} (err, api) => {
-    if (err) return utils.error(err);
+login({ appState: [] }, (err, api) => {
+    if (err) return console.error(err);
+
     api.listenMqtt((err, event) => {
+        if (err) return console.error(err);
+
         api.sendMessage(event.body, event.threadID);
     });
 });
+
 ```
 
 Result:
@@ -73,35 +73,55 @@ __Example (Basic Message)__
 ```js
 const login = require("@dongdev/fca-unofficial");
 
-login({ 
-    appState: []
-}, (err, api) => {
-    if(err) return console.error(err);
+login({ appState: [] }, (err, api) => {
+    if (err) {
+        console.error("Login Error:", err);
+        return;
+    }
 
-    var yourID = "000000000000000";
-    var msg = "Hey!";
-    api.sendMessage(msg, yourID);
+    let yourID = "000000000000000"; // Replace with actual Facebook ID
+    let msg = "Hey!";
+    
+    api.sendMessage(msg, yourID, (err) => {
+        if (err) console.error("Message Sending Error:", err);
+        else console.log("Message sent successfully!");
+    });
 });
+
 ```
 
 __Example (File upload)__
 
 ```js
 const login = require("@dongdev/fca-unofficial");
+const fs = require("fs"); // ✅ Required the fs module
 
-login({ 
-    appState: []
-}, (err, api) => {
-    if(err) return console.error(err);
-
-    // Note this example uploads an image called image.jpg
-    var yourID = "000000000000000";
-    var msg = {
-        body: "Hey!",
-        attachment: fs.createReadStream(__dirname + '/image.jpg')
+login({ appState: [] }, (err, api) => {
+    if (err) {
+        console.error("Login Error:", err);
+        return;
     }
-    api.sendMessage(msg, yourID);
+
+    let yourID = "000000000000000"; // Replace with actual Facebook ID
+    let imagePath = __dirname + "/image.jpg";
+
+    // Check if the file exists before sending
+    if (!fs.existsSync(imagePath)) {
+        console.error("Error: Image file not found!");
+        return;
+    }
+
+    let msg = {
+        body: "Hey!",
+        attachment: fs.createReadStream(imagePath)
+    };
+
+    api.sendMessage(msg, yourID, (err) => {
+        if (err) console.error("Message Sending Error:", err);
+        else console.log("Message sent successfully!");
+    });
 });
+
 ```
 
 ---
@@ -116,15 +136,23 @@ __Example__
 const fs = require("fs");
 const login = require("@dongdev/fca-unofficial");
 
-var credentials = { 
-    appState: []
-};
+const credentials = { appState: [] };
 
 login(credentials, (err, api) => {
-    if(err) return console.error(err);
+    if (err) {
+        console.error("Login Error:", err);
+        return;
+    }
 
-    fs.writeFileSync('appstate.json', JSON.stringify(api.getAppState()));
+    try {
+        const appState = JSON.stringify(api.getAppState(), null, 2); // Pretty print for readability
+        fs.writeFileSync("appstate.json", appState);
+        console.log("✅ AppState saved successfully!");
+    } catch (error) {
+        console.error("Error saving AppState:", error);
+    }
 });
+
 ```
 
 Alternative: Use [c3c-fbstate](https://github.com/c3cbot/c3c-fbstate) to get fbstate.json (appstate.json)
@@ -143,34 +171,44 @@ __Example__
 const fs = require("fs");
 const login = require("@dongdev/fca-unofficial");
 
-// Simple echo bot. It will repeat everything that you say.
-// Will stop when you say '/stop'
-login({appState: JSON.parse(fs.readFileSync('appstate.json', 'utf8'))}, (err, api) => {
-    if(err) return console.error(err);
+// Simple echo bot: Repeats everything you say. Stops when you say "/stop".
+login({ appState: JSON.parse(fs.readFileSync("appstate.json", "utf8")) }, (err, api) => {
+    if (err) {
+        console.error("Login Error:", err);
+        return;
+    }
 
-    api.setOptions({listenEvents: true});
+    api.setOptions({ listenEvents: true });
 
-    var stopListening = api.listenMqtt((err, event) => {
-        if( err) return console.error(err);
+    const stopListening = api.listenMqtt((err, event) => {
+        if (err) {
+            console.error("Listen Error:", err);
+            return;
+        }
 
+        // Mark message as read
         api.markAsRead(event.threadID, (err) => {
-            if(err) console.error(err);
+            if (err) console.error("Mark as read error:", err);
         });
 
-        switch(event.type) {
+        // Handle different event types
+        switch (event.type) {
             case "message":
-                if(event.body === '/stop') {
+                if (event.body && event.body.trim().toLowerCase() === "/stop") {
                     api.sendMessage("Goodbye…", event.threadID);
-                    return stopListening();
+                    stopListening();
+                    return;
                 }
-                api.sendMessage("TEST BOT: " + event.body, event.threadID);
+                api.sendMessage(`TEST BOT: ${event.body}`, event.threadID);
                 break;
+
             case "event":
-                console.log(event);
+                console.log("Event Received:", event);
                 break;
         }
     });
 });
+
 ```
 
 `<a name="projects-using-this-api"></a>`
