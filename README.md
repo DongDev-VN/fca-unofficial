@@ -12,8 +12,6 @@ _Disclaimer_: We are not responsible if your account gets banned for spammy acti
 
 If you encounter errors on fca, you can contact me [here](https://www.facebook.com/minhdong.dev)
 
-`</div>`
-
 Facebook now has an official API for chat bots [here](https://developers.facebook.com/docs/messenger-platform).
 
 This API is the only way to automate chat functionalities on a user account. We do this by emulating the browser. This means doing the exact same GET/POST requests and tricking Facebook into thinking we're accessing the website normally. Because we're doing it this way, this API won't work with an auth token but requires the credentials of a Facebook account.
@@ -81,7 +79,7 @@ login({ appState: [] }, (err, api) => {
 
     let yourID = "000000000000000"; // Replace with actual Facebook ID
     let msg = "Hey!";
-    
+  
     api.sendMessage(msg, yourID, (err) => {
         if (err) console.error("Message Sending Error:", err);
         else console.log("Message sent successfully!");

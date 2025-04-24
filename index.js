@@ -130,33 +130,18 @@ function setOptions(globalOptions, options) {
   });
 }
 function buildAPI(globalOptions, html, jar) {
-  const maybeCookie = jar
-    .getCookies("https://www.facebook.com")
-    .filter(function(val) {
-      return val.cookieString().split("=")[0] === "c_user";
-    });
-  const objCookie = jar
-    .getCookies("https://www.facebook.com")
-    .reduce(function(obj, val) {
-      obj[val.cookieString().split("=")[0]] = val.cookieString().split("=")[1];
-      return obj;
-    }, {});
-  if (maybeCookie.length === 0) {
-    throw {
-      error:
-        "Error retrieving userID. This can be caused by a lot of things, including getting blocked by Facebook for logging in from an unknown location. Try logging in with a browser to verify.",
-    };
+  const cookies = jar.getCookies("https://www.facebook.com");
+  const userCookie = cookies.find(c => c.cookieString().startsWith("c_user="));
+  const tiktikCookie = cookies.find(c => c.cookieString().startsWith("i_user="));
+  if (userCookie.length === 0 && tiktikCookie.length === 0) {
+    return log.error('login', "Không tìm thấy cookie cho người dùng, vui lòng kiểm tra lại thông tin đăng nhập")
+  } else if (!userCookie && !tiktikCookie) {
+    return log.error('login', "Không tìm thấy cookie cho người dùng, vui lòng kiểm tra lại thông tin đăng nhập")
+  } else if (html.includes("/checkpoint/block/?next")) {
+    return log.error('login', "Appstate die, vui lòng thay cái mới!", 'error');
   }
-  if (html.indexOf("/checkpoint/block/?next") > -1 || html.indexOf("/checkpoint/?next") > -1) {
-    throw {
-      error: "Checkpoint detected. Please log in with a browser to verify.", 
-    }
-  }
-  const userID = maybeCookie[0]
-    .cookieString()
-    .split("=")[1]
-    .toString();
-  const i_userID = objCookie.i_user || null;
+  const userID = (tiktikCookie || userCookie).cookieString().split("=")[1];
+  const i_userID = tiktikCookie ? tiktikCookie.cookieString().split("=")[1] : null;
   logger(`Logged in as ${userID}`, 'info');
   try {
     clearInterval(checkVerified);
@@ -204,6 +189,8 @@ function buildAPI(globalOptions, html, jar) {
     region,
     firstListen: true,
     fb_dtsg,
+    wsReqNumber: 0,
+    wsTaskNumber: 0
   };
   const api = {
     setOptions: setOptions.bind(null, globalOptions),
