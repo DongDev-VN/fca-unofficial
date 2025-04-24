@@ -1,6 +1,6 @@
 {
   "name": "@dongdev/fca-unofficial",
-  "version": "1.0.8",
+  "version": "1.0.9",
   "description": "A Facebook chat API without XMPP, will not be deprecated after April 30th, 2015.",
   "main": "index.js",
   "repository": {
