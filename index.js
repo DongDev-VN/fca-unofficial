@@ -40,7 +40,7 @@ async function checkForUpdates() {
     logger("Auto update is disabled", "info");
   }
   try {
-    const response = await axios.get("https://raw.githubusercontent.com/DongDev-VN/fca-unofficial/refs/heads/main/package.json");
+    const response = await axios.get("https://raw.githubusercontent.com/DongDev-VN/fca-unofficial/main/package.json");
     const remoteVersion = response.data.version;
     const localPackage = JSON.parse(fs.readFileSync(path.join(__dirname, "package.json"), "utf8"));
     const localVersion = localPackage.version;
