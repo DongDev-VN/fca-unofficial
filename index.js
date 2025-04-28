@@ -1,10 +1,11 @@
 "use strict";
 const utils = require("./utils");
 const log = require("npmlog");
-const axios = require("axios");
-const { execSync } = require("child_process");
-const fs = require("fs");
-const path = require("path");
+const { execSync } = require('child_process');
+const { promises: fsPromises, readFileSync } = require('fs');
+const fs = require('fs');
+const axios = require('axios');
+const path = require('path');
 const models = require("./lib/database/models");
 const logger = require("./lib/logger");
 let checkVerified = null;
@@ -36,27 +37,32 @@ global.fca = {
   config: config
 };
 async function checkForUpdates() {
-  if (!global.fca.config.autoUpdate) {
-    logger("Auto update is disabled", "info");
-  }
+  logger('Auto Check Update...', '[ FCA-UNO ] >');
   try {
-    const response = await axios.get("https://raw.githubusercontent.com/DongDev-VN/fca-unofficial/main/package.json");
-    const remoteVersion = response.data.version;
-    const localPackage = JSON.parse(fs.readFileSync(path.join(__dirname, "package.json"), "utf8"));
-    const localVersion = localPackage.version;
-    if (remoteVersion !== localVersion) {
-      logger(`New version available: ${remoteVersion}`, "FCA-UPDATE");
-      logger("Installing latest version...", "FCA-UPDATE");
-      execSync(`npm i ${localPackage.name}@latest`);
-      logger("Update completed! Please restart your application", "FCA-UPDATE");
-      process.exit(1);
-    } else {
-      logger(`You are using the latest version: ${localVersion}`, 'info');
-    }
+      const packageResponse = await axios.get('https://raw.githubusercontent.com/DongDev-VN/fca-unofficial/main/package.json');
+      const localBrandVersion = JSON.parse(readFileSync(path.join('./node_modules/@dongdev/fca-unofficial/package.json'), 'utf8')).version;
+      if (localBrandVersion !== packageResponse.data.version) {
+          logger(`New Version Published: ${localBrandVersion} => ${packageResponse.data.version}`, '[ FCA-UNO ] >');
+          logger('Performing Automatic Update to the Latest Version!', '[ FCA-UNO ] >');
+          const fcaUnoPath = path.join(process.cwd(), 'node_modules', '@dongdev', 'fca-unofficial');
+          if (fs.existsSync(fcaUnoPath)) {
+              fs.rmSync(fcaUnoPath, { recursive: true, force: true });
+          }
+          execSync('npm install @dongdev/fca-unofficial@latest', { stdio: 'inherit' });
+          logger('Version Upgrade Successful!', '[ FCA-UNO ] >');
+          logger('Restarting...', '[ FCA-UNO ] >');
+          await new Promise(resolve => setTimeout(resolve, 5000));
+          console.clear();
+          process.exit(1);
+      } else {
+          logger(`You Are Currently Using Version: ${localBrandVersion}!`, '[ FCA-UNO ] >');
+          logger('Have a good day!', '[ FCA-UNO ] >');
+      }
   } catch (err) {
-    logger("Failed to check for updates:", err, "error");
+      logger(`Error checking/updating package: ${err}`, '[ FCA-UNO ] >');
   }
 }
+
 if (global.fca.config.autoUpdate) {
   checkForUpdates();
 }
@@ -133,7 +139,6 @@ function buildAPI(globalOptions, html, jar) {
   const cookies = jar.getCookies("https://www.facebook.com");
   const userCookie = cookies.find(c => c.cookieString().startsWith("c_user="));
   const tiktikCookie = cookies.find(c => c.cookieString().startsWith("i_user="));
-  console.log(cookies)
   if (userCookie.length === 0 && tiktikCookie.length === 0) {
     return log.error('login', "Không tìm thấy cookie cho người dùng, vui lòng kiểm tra lại thông tin đăng nhập")
   } else if (!userCookie && !tiktikCookie) {
@@ -305,7 +310,7 @@ function loginHelper(appState, email, password, globalOptions, callback, prCallb
 
   mainPromise
     .then(async () => {
-      log.info('Đăng nhập thành công');
+      logger('Login successful!', '[ FCA-UNO ] >');
       callback(null, api);
     })
     .catch(e => {
