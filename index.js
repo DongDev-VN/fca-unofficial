@@ -62,7 +62,7 @@ if (global.fca.config.autoUpdate) {
 }
 const Boolean_Option = [
   "online",
-  "selfListen", 
+  "selfListen",
   "listenEvents",
   "updatePresence",
   "forceLogin",
@@ -73,7 +73,7 @@ const Boolean_Option = [
   "emitReady",
 ];
 function setOptions(globalOptions, options) {
-  Object.keys(options).map(function(key) {
+  Object.keys(options).map(function (key) {
     switch (Boolean_Option.includes(key)) {
       case true: {
         globalOptions[key] = Boolean(options[key]);
@@ -133,6 +133,7 @@ function buildAPI(globalOptions, html, jar) {
   const cookies = jar.getCookies("https://www.facebook.com");
   const userCookie = cookies.find(c => c.cookieString().startsWith("c_user="));
   const tiktikCookie = cookies.find(c => c.cookieString().startsWith("i_user="));
+  console.log(cookies)
   if (userCookie.length === 0 && tiktikCookie.length === 0) {
     return log.error('login', "Không tìm thấy cookie cho người dùng, vui lòng kiểm tra lại thông tin đăng nhập")
   } else if (!userCookie && !tiktikCookie) {
@@ -145,7 +146,7 @@ function buildAPI(globalOptions, html, jar) {
   logger(`Logged in as ${userID}`, 'info');
   try {
     clearInterval(checkVerified);
-  } catch (_) {}
+  } catch (_) { }
   const clientID = ((Math.random() * 2147483648) | 0).toString(16);
   let mqttEndpoint, region, fb_dtsg, irisSeqID;
   try {
@@ -208,7 +209,7 @@ function buildAPI(globalOptions, html, jar) {
   require("fs")
     .readdirSync(__dirname + "/src/")
     .filter((v) => v.endsWith(".js"))
-    .map(function(v) {
+    .map(function (v) {
       api[v.replace(".js", "")] = require("./src/" + v)(defaultFuncs, api, ctx);
     });
   api.listen = api.listenMqtt;
@@ -223,130 +224,95 @@ function buildAPI(globalOptions, html, jar) {
         console.error("An error occurred while refreshing fb_dtsg", err);
       });
   }, 1000 * 60 * 60 * 24);
-  return [ctx, defaultFuncs, api];
+  return {
+    ctx,
+    defaultFuncs,
+    api
+  };
 }
-function loginHelper(
-  appState,
-  email,
-  password,
-  globalOptions,
-  callback,
-  prCallback
-) {
+
+function loginHelper(appState, email, password, globalOptions, callback, prCallback) {
   let mainPromise = null;
   const jar = utils.getJar();
   if (appState) {
-    if (utils.getType(appState) === "Array" && appState.some((c) => c.name)) {
-      appState = appState.map((c) => {
-        c.key = c.name;
-        delete c.name;
-        return c;
-      });
-    } else if (utils.getType(appState) === "String") {
-      const arrayAppState = [];
-      appState.split(";").forEach((c) => {
-        const [key, value] = c.split("=");
-        arrayAppState.push({
-          key: (key || "").trim(),
-          value: (value || "").trim(),
-          domain: "facebook.com",
-          path: "/",
-          expires: new Date().getTime() + 1000 * 60 * 60 * 24 * 365,
-        });
-      });
-      appState = arrayAppState;
+    try {
+      appState = JSON.parse(appState);
+    } catch (e) {
+      try {
+        appState = appState;
+      } catch (e) {
+        return callback(new Error("Failed to parse appState"));
+      }
     }
-    appState.map(function(c) {
-      const str =
-        c.key +
-        "=" +
-        c.value +
-        "; expires=" +
-        c.expires +
-        "; domain=" +
-        c.domain +
-        "; path=" +
-        c.path +
-        ";";
-      jar.setCookie(str, "http://" + c.domain);
-    });
-    mainPromise = utils
-      .get("https://www.facebook.com/", jar, null, globalOptions, {
-        noRef: true,
-      })
-      .then(utils.saveCookies(jar));
+
+    try {
+      appState.forEach(c => {
+        const str = `${c.key}=${c.value}; expires=${c.expires}; domain=${c.domain}; path=${c.path};`;
+        jar.setCookie(str, "http://" + c.domain);
+      });
+
+      mainPromise = utils.get('https://www.facebook.com/', jar, null, globalOptions, { noRef: true })
+        .then(utils.saveCookies(jar));
+    } catch (e) {
+      process.exit(0);
+    }
   } else {
-    if (email) {
-      throw {
-        error:
-          "Currently, the login method by email and password is no longer supported, please use the login method by appState",
-      };
-    } else {
-      throw { error: "No appState given." };
-    }
+    mainPromise = utils
+      .get("https://www.facebook.com/", null, null, globalOptions, { noRef: true })
+      .then(utils.saveCookies(jar))
+      .then(makeLogin(jar, email, password, globalOptions, callback, prCallback))
+      .then(() => utils.get('https://www.facebook.com/', jar, null, globalOptions).then(utils.saveCookies(jar)));
   }
-  let ctx = null;
-  let _defaultFuncs = null;
-  let api = null;
+
+  function handleRedirect(res) {
+    const reg = /<meta http-equiv="refresh" content="0;url=([^"]+)[^>]+>/;
+    const redirect = reg.exec(res.body);
+    if (redirect && redirect[1]) {
+      return utils.get(redirect[1], jar, null, globalOptions).then(utils.saveCookies(jar));
+    }
+    return res;
+  }
+
+  let ctx, api;
   mainPromise = mainPromise
-    .then(function(res) {
-      const reg = /<meta http-equiv="refresh" content="0;url=([^"]+)[^>]+>/;
-      const redirect = reg.exec(res.body);
-      if (redirect && redirect[1]) {
-        return utils
-          .get(redirect[1], jar, null, globalOptions)
-          .then(utils.saveCookies(jar));
+    .then(handleRedirect)
+    .then(res => {
+      const mobileAgentRegex = /MPageLoadClientMetrics/gs;
+      if (!mobileAgentRegex.test(res.body)) {
+        globalOptions.userAgent = "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/121.0.0.0 Safari/537.36";
+        return utils.get('https://www.facebook.com/', jar, null, globalOptions, { noRef: true }).then(utils.saveCookies(jar));
       }
       return res;
     })
-    .then(function(res) {
+    .then(handleRedirect)
+    .then(res => {
       const html = res.body;
-      const stuff = buildAPI(globalOptions, html, jar);
-      ctx = stuff[0];
-      _defaultFuncs = stuff[1];
-      api = stuff[2];
+      const Obj = buildAPI(globalOptions, html, jar);
+      ctx = Obj.ctx;
+      api = Obj.api;
       return res;
     });
+
   if (globalOptions.pageID) {
     mainPromise = mainPromise
-      .then(function() {
-        return utils.get(
-          "https://www.facebook.com/" +
-            ctx.globalOptions.pageID +
-            "/messages/?section=messages&subsection=inbox",
-          ctx.jar,
-          null,
-          globalOptions
-        );
-      })
-      .then(function(resData) {
-        let url = utils
-          .getFrom(
-            resData.body,
-            'window.location.replace("https:\\/\\/www.facebook.com\\',
-            '");'
-          )
-          .split("\\")
-          .join("");
+      .then(() => utils.get(`https://www.facebook.com/${globalOptions.pageID}/messages/?section=messages&subsection=inbox`, jar, null, globalOptions))
+      .then(resData => {
+        let url = utils.getFrom(resData.body, 'window.location.replace("https:\\/\\/www.facebook.com\\', '");').split('\\').join('');
         url = url.substring(0, url.length - 1);
-        return utils.get(
-          "https://www.facebook.com" + url,
-          ctx.jar,
-          null,
-          globalOptions
-        );
+        return utils.get('https://www.facebook.com' + url, jar, null, globalOptions);
       });
   }
+
   mainPromise
-    .then(function() {
-      logger("Done logging in", 'info');
-      return callback(null, api);
+    .then(async () => {
+      log.info('Đăng nhập thành công');
+      callback(null, api);
     })
-    .catch(function(e) {
-      log.error("login", e.error || e);
+    .catch(e => {
       callback(e);
     });
 }
+
 function login(loginData, options, callback) {
   if (
     utils.getType(options) === "Function" ||
@@ -379,11 +345,11 @@ function login(loginData, options, callback) {
   ) {
     let rejectFunc = null;
     let resolveFunc = null;
-    var returnPromise = new Promise(function(resolve, reject) {
+    var returnPromise = new Promise(function (resolve, reject) {
       resolveFunc = resolve;
       rejectFunc = reject;
     });
-    prCallback = function(error, api) {
+    prCallback = function (error, api) {
       if (error) {
         return rejectFunc(error);
       }
