@@ -36,7 +36,7 @@ module.exports = function (defaultFuncs, api, ctx) {
 				resolveFunc(data);
 			};
 		}
-		const form = {
+		var form = {
 			queries: JSON.stringify({
 				o0: {
 					doc_id: "5009315269112105",
@@ -50,10 +50,11 @@ module.exports = function (defaultFuncs, api, ctx) {
 		defaultFuncs
 			.post("https://www.facebook.com/api/graphqlbatch/", ctx.jar, form)
 			.then(utils.parseAndCheckLogin(ctx, defaultFuncs))
-			.then(resData => {
+			.then(function(resData) {
 				if (!resData || resData.error) {
 					throw resData?.error || new Error("Unknown error from GraphQL API");
 				}
+				console.log("getUserInfo", resData);
 				const result = resData[0]?.o0?.data || null;
 				if (!result) {
 					console.error("getUserInfo", "Không nhận được dữ liệu hợp lệ!");
