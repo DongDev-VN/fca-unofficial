@@ -188,7 +188,6 @@ function buildAPI(globalOptions, html, jar) {
       api[v.replace(".js", "")] = require("./src/" + v)(defaultFuncs, api, ctx);
     });
   api.listen = api.listenMqtt;
-  setInterval(checkForUpdates, 1000 * 60 * 60 * 24);
   setInterval(async () => {
     api
       .refreshFb_dtsg()
