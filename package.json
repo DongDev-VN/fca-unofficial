@@ -1,6 +1,6 @@
 {
   "name": "@dongdev/fca-unofficial",
-  "version": "1.0.15",
+  "version": "1.0.16",
   "description": "A Facebook chat API without XMPP, will not be deprecated after April 30th, 2015.",
   "main": "index.js",
   "repository": {
@@ -27,7 +27,7 @@
   },
   "devDependencies": {
     "eslint": "^7.5.0",
-    "mocha": "^7.0.1",
+    "mocha": "^10.2.0",
     "prettier": "^1.11.1"
   },
   "scripts": {
@@ -45,6 +45,41 @@
   "engines": {
     "node": ">=10.x"
   },
+  "eslintConfig": {
+    "env": {
+      "es6": true,
+      "es2017": true,
+      "node": true
+    },
+    "extends": "eslint:recommended",
+    "parserOptions": {
+      "sourceType": "module"
+    },
+    "rules": {
+      "linebreak-style": [
+        "error",
+        "unix"
+      ],
+      "semi": [
+        "error",
+        "always"
+      ],
+      "no-unused-vars": [
+        1,
+        {
+          "argsIgnorePattern": "^_",
+          "varsIgnorePattern": "^_"
+        }
+      ],
+      "no-empty": [
+        "error",
+        {
+          "allowEmptyCatch": true
+        }
+      ]
+    }
+  },
+  "types": "index.d.ts",
   "homepage": "https://github.com/DongDev-VN/fca-unofficial#readme",
   "bugs": {
     "url": "https://github.com/DongDev-VN/fca-unofficial/issues"

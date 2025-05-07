@@ -36,36 +36,6 @@ if (!fs.existsSync(configPath)) {
 global.fca = {
   config: config
 };
-async function checkForUpdates() {
-  logger('Auto Check Update...', '[ FCA-UNO ] >');
-  try {
-      const packageResponse = await axios.get('https://raw.githubusercontent.com/DongDev-VN/fca-unofficial/main/package.json');
-      const localBrandVersion = JSON.parse(readFileSync(path.join('./node_modules/@dongdev/fca-unofficial/package.json'), 'utf8')).version;
-      if (localBrandVersion !== packageResponse.data.version) {
-          logger(`New Version Published: ${localBrandVersion} => ${packageResponse.data.version}`, '[ FCA-UNO ] >');
-          logger('Performing Automatic Update to the Latest Version!', '[ FCA-UNO ] >');
-          const fcaUnoPath = path.join(process.cwd(), 'node_modules', '@dongdev', 'fca-unofficial');
-          if (fs.existsSync(fcaUnoPath)) {
-              fs.rmSync(fcaUnoPath, { recursive: true, force: true });
-          }
-          execSync('npm install @dongdev/fca-unofficial@latest', { stdio: 'inherit' });
-          logger('Version Upgrade Successful!', '[ FCA-UNO ] >');
-          logger('Restarting...', '[ FCA-UNO ] >');
-          await new Promise(resolve => setTimeout(resolve, 5000));
-          console.clear();
-          process.exit(1);
-      } else {
-          logger(`You Are Currently Using Version: ${localBrandVersion}!`, '[ FCA-UNO ] >');
-          logger('Have a good day!', '[ FCA-UNO ] >');
-      }
-  } catch (err) {
-      logger(`Error checking/updating package: ${err}`, '[ FCA-UNO ] >');
-  }
-}
-
-if (global.fca.config.autoUpdate) {
-  checkForUpdates();
-}
 const Boolean_Option = [
   "online",
   "selfListen",
@@ -310,6 +280,30 @@ function loginHelper(appState, email, password, globalOptions, callback, prCallb
 
   mainPromise
     .then(async () => {
+      if (global.fca.config.autoUpdate) {
+        axios.get('https://raw.githubusercontent.com/DongDev-VN/fca-unofficial/main/package.json').then(async (res) => {
+          const localbrand = JSON.parse(readFileSync('./node_modules/@dongdev/fca-unofficial/package.json')).version;
+          if (localbrand != res.data.version) {
+            logger(`New Version Published: ${JSON.parse(readFileSync('./node_modules/@dongdev/fca-unofficial/package.json')).version} => ${res.data.version}`, 'warn');
+            logger(`Perform Automatic Update to the Latest Version !`, 'warn');
+            try {
+              execSync('npm install @dongdev/fca-unofficial@latest', { stdio: 'inherit' });
+              logger("Upgrade Version Successfully!", "[ FCA-UNO ] >")
+              logger('Restarting...', '[ FCA-UNO ] >');
+              await new Promise(resolve => setTimeout(resolve, 5 * 1000));
+              console.clear();
+              process.exit(1);
+            } catch (err) {
+              logger('Error Auto Update ! ' + err, 'error');
+            }
+          } else {
+            logger(`You Are Currently Using Version: ` + localbrand + ' !', "[ FCA-UNO ] >");
+            logger(`Have a good day !`, "[ FCA-UNO ] >")
+            await new Promise(resolve => setTimeout(resolve, 5 * 1000));
+            callback(null, api);
+          }
+        });
+      }
       logger('Login successful!', '[ FCA-UNO ] >');
       callback(null, api);
     })

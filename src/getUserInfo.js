@@ -1,8 +1,6 @@
 "use strict";
-
 var utils = require("../utils");
 var log = require("npmlog");
-
 module.exports = function (defaultFuncs, api, ctx) {
 	function formatData(data) {
 		const retObj = {};
@@ -36,12 +34,13 @@ module.exports = function (defaultFuncs, api, ctx) {
 				resolveFunc(data);
 			};
 		}
+		const ids = Array.isArray(id) ? id : [id];
 		var form = {
 			queries: JSON.stringify({
 				o0: {
 					doc_id: "5009315269112105",
 					query_params: {
-						ids: [id]
+						ids: ids
 					}
 				}
 			}),
@@ -51,21 +50,31 @@ module.exports = function (defaultFuncs, api, ctx) {
 			.post("https://www.facebook.com/api/graphqlbatch/", ctx.jar, form)
 			.then(utils.parseAndCheckLogin(ctx, defaultFuncs))
 			.then(function(resData) {
-				if (!resData || resData.error) {
-					throw resData?.error || new Error("Unknown error from GraphQL API");
+				if (!resData || resData.length === 0) {
+					throw new Error("Empty response from server");
 				}
-				console.log("getUserInfo", resData);
-				const result = resData[0]?.o0?.data || null;
-				if (!result) {
-					console.error("getUserInfo", "Không nhận được dữ liệu hợp lệ!");
-					return callback(new Error("Invalid data received"));
+				if (resData.error) {
+					throw resData.error;
 				}
-				callback(null, formatData(result));
+				const response = resData[0];
+				if (!response || !response.o0) {
+					throw new Error("Invalid response format");
+				}
+				if (response.o0.errors && response.o0.errors.length > 0) {
+					throw new Error(response.o0.errors[0].message || "GraphQL error");
+				}
+				const result = response.o0.data;
+				if (!result || !result.messaging_actors || result.messaging_actors.length === 0) {
+					log.warn("getUserInfo", "No user data found for the provided ID(s)");
+					return callback(null, {});
+				}
+				const formattedData = formatData(result);
+				return callback(null, formattedData);
 			})
 			.catch(err => {
-				log.error("getUserInfoV4GraphQL", "Lỗi: Có thể do bạn spam quá nhiều, hãy thử lại!");
+				log.error("getUserInfoGraphQL", "Error: " + (err.message || "Unknown error occurred"));
 				callback(err);
-			});
+			});	
 		return returnPromise;
 	};
 };
