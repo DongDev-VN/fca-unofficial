@@ -20,3 +20,6 @@ Too lazy to write changelog, sorry! (will write changelog in the next release, t
 
 ## v1.0.16 - 2025-05-07
 - Hotfix / auto bump
+
+## v1.0.17 - 2025-05-07
+- Hotfix / auto bump

@@ -7,10 +7,11 @@ const HttpsProxyAgent = require("https-proxy-agent");
 const EventEmitter = require("events");
 const Duplexify = require("duplexify");
 const { Transform } = require("stream");
-var identity = function () {};
+var identity = function () { };
 var form = {};
-var getSeqID = function () {};
+var getSeqID = function () { };
 const logger = require("../lib/logger.js");
+let mqttReconnectCount = 0;
 const topics = [
   "/ls_req",
   "/ls_resp",
@@ -228,6 +229,56 @@ function listenMqtt(defaultFuncs, api, ctx, globalCallback) {
     }
   });
   mqttClient.on("connect", function () {
+    let StopProcessin = true;
+    mqttReconnectCount = 0;
+    setInterval(() => {
+      console.log('Đang chuẩn bị ngắt kết nối MQTT...');
+      StopProcessin = true;
+      if (ctx.mqttClient) {
+        topics.forEach((topic) => {
+          try {
+            ctx.mqttClient.unsubscribe(topic);
+          } catch (e) { }
+        });
+        try {
+          ctx.mqttClient.publish("/browser_close", "{}");
+        } catch (e) { }
+        ctx.mqttClient.removeAllListeners();
+        console.log('Ngắt Kết Nối MQTT...');
+        let connectionClosed = false;
+        const afterConnectionClosed = () => {
+          if (connectionClosed) return;
+          connectionClosed = true;
+          ctx.lastSeqId = null;
+          ctx.syncToken = undefined;
+          ctx.t_mqttCalled = false;
+          mqttReconnectCount = 0;
+          StopProcessing = false;
+          console.log('Đang Kết Nối Lại MQTT...');
+          setTimeout(() => {
+            getSeqID();
+            console.log('Kết Nối Lại MQTT Thành Công');
+          }, 1000);
+        };
+        try {
+          ctx.mqttClient.end(false, afterConnectionClosed);
+          setTimeout(() => {
+            if (!connectionClosed) {
+              console.warn('Đóng kết nối MQTT bằng timeout');
+              ctx.mqttClient = undefined;
+              afterConnectionClosed();
+            }
+          }, 5000);
+        } catch (e) {
+          console.error('Lỗi khi đóng kết nối MQTT:', e);
+          ctx.mqttClient = undefined;
+          afterConnectionClosed();
+        }
+      } else {
+        getSeqID();
+        console.log('Kết Nối Lại MQTT Thành Công');
+      }
+    }, 60 * 60 * 1000);
     if (process.env.OnStatus === undefined) {
       logger("fca-unoffcial premium", "info");
       process.env.OnStatus = true;
@@ -271,9 +322,9 @@ function listenMqtt(defaultFuncs, api, ctx, globalCallback) {
       clearTimeout(rTimeout);
       ctx.globalOptions.emitReady
         ? globalCallback({
-            type: "ready",
-            error: null,
-          })
+          type: "ready",
+          error: null,
+        })
         : "";
       delete ctx.tmsWait;
     };
@@ -358,11 +409,10 @@ function listenMqtt(defaultFuncs, api, ctx, globalCallback) {
           if (taskRespData == null) {
             taskCallback("error", null);
           } else {
-            taskCallback(null, {
+            taskCallback(null, Object.assign({
               type: taskType,
-              reqID: reqID,
-              ...taskRespData,
-            });
+              reqID: reqID
+            }, taskRespData));
           }
         }
       }
@@ -372,8 +422,8 @@ function listenMqtt(defaultFuncs, api, ctx, globalCallback) {
       return;
     }
   });
-  mqttClient.on("close", function () {});
-  mqttClient.on("disconnect", () => {});
+  mqttClient.on("close", function () { });
+  mqttClient.on("disconnect", () => { });
 }
 function getTaskResponseData(taskType, payload) {
   try {
@@ -476,10 +526,10 @@ function parseDelta(defaultFuncs, api, ctx, globalCallback, { delta }) {
             delta.deltaMessageReply.message === undefined
               ? []
               : delta.deltaMessageReply.message.data === undefined
-              ? []
-              : delta.deltaMessageReply.message.data.prng === undefined
-              ? []
-              : JSON.parse(delta.deltaMessageReply.message.data.prng);
+                ? []
+                : delta.deltaMessageReply.message.data.prng === undefined
+                  ? []
+                  : JSON.parse(delta.deltaMessageReply.message.data.prng);
 
           const m_id = mdata.map((u) => u.i);
           const m_offset = mdata.map((u) => u.o);
@@ -495,9 +545,9 @@ function parseDelta(defaultFuncs, api, ctx, globalCallback, { delta }) {
             threadID: (delta.deltaMessageReply.message.messageMetadata.threadKey
               .threadFbId
               ? delta.deltaMessageReply.message.messageMetadata.threadKey
-                  .threadFbId
+                .threadFbId
               : delta.deltaMessageReply.message.messageMetadata.threadKey
-                  .otherUserFbId
+                .otherUserFbId
             ).toString(),
             messageID:
               delta.deltaMessageReply.message.messageMetadata.messageId,
@@ -540,13 +590,13 @@ function parseDelta(defaultFuncs, api, ctx, globalCallback, { delta }) {
               delta.deltaMessageReply.repliedToMessage === undefined
                 ? []
                 : delta.deltaMessageReply.repliedToMessage.data === undefined
-                ? []
-                : delta.deltaMessageReply.repliedToMessage.data.prng ===
-                  undefined
-                ? []
-                : JSON.parse(
-                    delta.deltaMessageReply.repliedToMessage.data.prng
-                  );
+                  ? []
+                  : delta.deltaMessageReply.repliedToMessage.data.prng ===
+                    undefined
+                    ? []
+                    : JSON.parse(
+                      delta.deltaMessageReply.repliedToMessage.data.prng
+                    );
             const m_id = mdata.map((u) => u.i);
             const m_offset = mdata.map((u) => u.o);
             const m_length = mdata.map((u) => u.l);
@@ -560,9 +610,9 @@ function parseDelta(defaultFuncs, api, ctx, globalCallback, { delta }) {
               threadID: (delta.deltaMessageReply.repliedToMessage
                 .messageMetadata.threadKey.threadFbId
                 ? delta.deltaMessageReply.repliedToMessage.messageMetadata
-                    .threadKey.threadFbId
+                  .threadKey.threadFbId
                 : delta.deltaMessageReply.repliedToMessage.messageMetadata
-                    .threadKey.otherUserFbId
+                  .threadKey.otherUserFbId
               ).toString(),
               messageID:
                 delta.deltaMessageReply.repliedToMessage.messageMetadata
@@ -782,37 +832,37 @@ function parseDelta(defaultFuncs, api, ctx, globalCallback, { delta }) {
                 case "ThreadImageMessage":
                   (!ctx.globalOptions.selfListen &&
                     fetchData.message_sender.id.toString() === ctx.userID) ||
-                  !ctx.loggedIn
+                    !ctx.loggedIn
                     ? undefined
                     : (function () {
-                        globalCallback(null, {
-                          type: "event",
-                          threadID: utils.formatID(tid.toString()),
-                          logMessageType: "log:thread-image",
-                          logMessageData: {
-                            image: {
-                              attachmentID:
-                                fetchData.image_with_metadata &&
-                                fetchData.image_with_metadata
-                                  .legacy_attachment_id,
-                              width:
-                                fetchData.image_with_metadata &&
-                                fetchData.image_with_metadata
-                                  .original_dimensions.x,
-                              height:
-                                fetchData.image_with_metadata &&
-                                fetchData.image_with_metadata
-                                  .original_dimensions.y,
-                              url:
-                                fetchData.image_with_metadata &&
-                                fetchData.image_with_metadata.preview.uri,
-                            },
+                      globalCallback(null, {
+                        type: "event",
+                        threadID: utils.formatID(tid.toString()),
+                        logMessageType: "log:thread-image",
+                        logMessageData: {
+                          image: {
+                            attachmentID:
+                              fetchData.image_with_metadata &&
+                              fetchData.image_with_metadata
+                                .legacy_attachment_id,
+                            width:
+                              fetchData.image_with_metadata &&
+                              fetchData.image_with_metadata
+                                .original_dimensions.x,
+                            height:
+                              fetchData.image_with_metadata &&
+                              fetchData.image_with_metadata
+                                .original_dimensions.y,
+                            url:
+                              fetchData.image_with_metadata &&
+                              fetchData.image_with_metadata.preview.uri,
                           },
-                          logMessageBody: fetchData.snippet,
-                          timestamp: fetchData.timestamp_precise,
-                          author: fetchData.message_sender.id,
-                        });
-                      })();
+                        },
+                        logMessageBody: fetchData.snippet,
+                        timestamp: fetchData.timestamp_precise,
+                        author: fetchData.message_sender.id,
+                      });
+                    })();
                   break;
                 case "UserMessage": {
                   const event = {
@@ -981,7 +1031,7 @@ module.exports = function (defaultFuncs, api, ctx) {
   return function (callback) {
     class MessageEmitter extends EventEmitter {
       stopListening(callback) {
-        callback = callback || (() => {});
+        callback = callback || (() => { });
         globalCallback = identity;
         if (ctx.mqttClient) {
           ctx.mqttClient.unsubscribe("/webrtc");
