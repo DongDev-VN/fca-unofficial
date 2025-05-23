@@ -229,11 +229,11 @@ function listenMqtt(defaultFuncs, api, ctx, globalCallback) {
     }
   });
   mqttClient.on("connect", function () {
-    let StopProcessin = true;
+    let StopProcessing = true;
     mqttReconnectCount = 0;
     setInterval(() => {
       console.log('Đang chuẩn bị ngắt kết nối MQTT...');
-      StopProcessin = true;
+      StopProcessing = true;
       if (ctx.mqttClient) {
         topics.forEach((topic) => {
           try {
