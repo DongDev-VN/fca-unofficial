@@ -279,40 +279,40 @@ function loginHelper(appState, email, password, globalOptions, callback, prCallb
 
   mainPromise
     .then(async () => {
-      if (global.fca.config.autoUpdate) {
-        try {
-          exec('npm view @dongdev/fca-unofficial version', async (error, stdout, stderr) => {
-            if (error) {
-              logger('Error checking version: ' + error, 'error');
-              return;
-            }
-            const npmVersion = stdout.trim();
-            const localbrand = JSON.parse(readFileSync('./node_modules/@dongdev/fca-unofficial/package.json')).version;
-            if (localbrand !== npmVersion) {
-              logger(`New Version Published: ${localbrand} => ${npmVersion}`, 'warn');
-              logger(`Perform Automatic Update to the Latest Version !`, 'warn');
-              try {
-                execSync('npm install @dongdev/fca-unofficial@latest', { stdio: 'inherit' });
-                logger("Upgrade Version Successfully!", "[ FCA-UNO ] >")
-                logger('Restarting...', '[ FCA-UNO ] >');
-                await new Promise(resolve => setTimeout(resolve, 5 * 1000));
-                console.clear();
-                process.exit(1);
-              } catch (err) {
-                logger('Error Auto Update ! ' + err, 'error');
-              }
-            } else {
-              logger(`You Are Currently Using Version: ${localbrand} !`, "[ FCA-UNO ] >");
-              logger(`Have a good day !`, "[ FCA-UNO ] >")
-              await new Promise(resolve => setTimeout(resolve, 5 * 1000));
-              callback(null, api);
-            }
-          });
-        } catch (err) {
-          logger('Error checking for updates: ' + err, 'error');
-          callback(null, api);
-        }
-      }
+      // if (global.fca.config.autoUpdate) {
+      //   try {
+      //     exec('npm view @dongdev/fca-unofficial version', async (error, stdout, stderr) => {
+      //       if (error) {
+      //         logger('Error checking version: ' + error, 'error');
+      //         return;
+      //       }
+      //       const npmVersion = stdout.trim();
+      //       const localbrand = JSON.parse(readFileSync('./node_modules/@dongdev/fca-unofficial/package.json')).version;
+      //       if (localbrand !== npmVersion) {
+      //         logger(`New Version Published: ${localbrand} => ${npmVersion}`, 'warn');
+      //         logger(`Perform Automatic Update to the Latest Version !`, 'warn');
+      //         try {
+      //           execSync('npm install @dongdev/fca-unofficial@latest', { stdio: 'inherit' });
+      //           logger("Upgrade Version Successfully!", "[ FCA-UNO ] >")
+      //           logger('Restarting...', '[ FCA-UNO ] >');
+      //           await new Promise(resolve => setTimeout(resolve, 5 * 1000));
+      //           console.clear();
+      //           process.exit(1);
+      //         } catch (err) {
+      //           logger('Error Auto Update ! ' + err, 'error');
+      //         }
+      //       } else {
+      //         logger(`You Are Currently Using Version: ${localbrand} !`, "[ FCA-UNO ] >");
+      //         logger(`Have a good day !`, "[ FCA-UNO ] >")
+      //         await new Promise(resolve => setTimeout(resolve, 5 * 1000));
+      //         callback(null, api);
+      //       }
+      //     });
+      //   } catch (err) {
+      //     logger('Error checking for updates: ' + err, 'error');
+      //     callback(null, api);
+      //   }
+      // }
       logger('Login successful!', '[ FCA-UNO ] >');
       callback(null, api);
     })

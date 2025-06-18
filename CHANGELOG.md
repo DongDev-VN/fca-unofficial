@@ -26,3 +26,6 @@ Too lazy to write changelog, sorry! (will write changelog in the next release, t
 
 ## v1.0.18 - 2025-05-22
 - Hotfix / auto bump
+
+## v1.0.19 - 2025-05-23
+- Hotfix / auto bump

@@ -229,56 +229,56 @@ function listenMqtt(defaultFuncs, api, ctx, globalCallback) {
     }
   });
   mqttClient.on("connect", function () {
-    let StopProcessing = true;
-    mqttReconnectCount = 0;
-    setInterval(() => {
-      console.log('Đang chuẩn bị ngắt kết nối MQTT...');
-      StopProcessing = true;
-      if (ctx.mqttClient) {
-        topics.forEach((topic) => {
-          try {
-            ctx.mqttClient.unsubscribe(topic);
-          } catch (e) { }
-        });
-        try {
-          ctx.mqttClient.publish("/browser_close", "{}");
-        } catch (e) { }
-        ctx.mqttClient.removeAllListeners();
-        console.log('Ngắt Kết Nối MQTT...');
-        let connectionClosed = false;
-        const afterConnectionClosed = () => {
-          if (connectionClosed) return;
-          connectionClosed = true;
-          ctx.lastSeqId = null;
-          ctx.syncToken = undefined;
-          ctx.t_mqttCalled = false;
-          mqttReconnectCount = 0;
-          StopProcessing = false;
-          console.log('Đang Kết Nối Lại MQTT...');
-          setTimeout(() => {
-            getSeqID();
-            console.log('Kết Nối Lại MQTT Thành Công');
-          }, 1000);
-        };
-        try {
-          ctx.mqttClient.end(false, afterConnectionClosed);
-          setTimeout(() => {
-            if (!connectionClosed) {
-              console.warn('Đóng kết nối MQTT bằng timeout');
-              ctx.mqttClient = undefined;
-              afterConnectionClosed();
-            }
-          }, 5000);
-        } catch (e) {
-          console.error('Lỗi khi đóng kết nối MQTT:', e);
-          ctx.mqttClient = undefined;
-          afterConnectionClosed();
-        }
-      } else {
-        getSeqID();
-        console.log('Kết Nối Lại MQTT Thành Công');
-      }
-    }, 60 * 60 * 1000);
+    // let StopProcessing = true;
+    // mqttReconnectCount = 0;
+    // setInterval(() => {
+    //   console.log('Đang chuẩn bị ngắt kết nối MQTT...');
+    //   StopProcessing = true;
+    //   if (ctx.mqttClient) {
+    //     topics.forEach((topic) => {
+    //       try {
+    //         ctx.mqttClient.unsubscribe(topic);
+    //       } catch (e) { }
+    //     });
+    //     try {
+    //       ctx.mqttClient.publish("/browser_close", "{}");
+    //     } catch (e) { }
+    //     ctx.mqttClient.removeAllListeners();
+    //     console.log('Ngắt Kết Nối MQTT...');
+    //     let connectionClosed = false;
+    //     const afterConnectionClosed = () => {
+    //       if (connectionClosed) return;
+    //       connectionClosed = true;
+    //       ctx.lastSeqId = null;
+    //       ctx.syncToken = undefined;
+    //       ctx.t_mqttCalled = false;
+    //       mqttReconnectCount = 0;
+    //       StopProcessing = false;
+    //       console.log('Đang Kết Nối Lại MQTT...');
+    //       setTimeout(() => {
+    //         getSeqID();
+    //         console.log('Kết Nối Lại MQTT Thành Công');
+    //       }, 1000);
+    //     };
+    //     try {
+    //       ctx.mqttClient.end(false, afterConnectionClosed);
+    //       setTimeout(() => {
+    //         if (!connectionClosed) {
+    //           console.warn('Đóng kết nối MQTT bằng timeout');
+    //           ctx.mqttClient = undefined;
+    //           afterConnectionClosed();
+    //         }
+    //       }, 5000);
+    //     } catch (e) {
+    //       console.error('Lỗi khi đóng kết nối MQTT:', e);
+    //       ctx.mqttClient = undefined;
+    //       afterConnectionClosed();
+    //     }
+    //   } else {
+    //     getSeqID();
+    //     console.log('Kết Nối Lại MQTT Thành Công');
+    //   }
+    // }, 60 * 60 * 1000);
     if (process.env.OnStatus === undefined) {
       logger("fca-unoffcial premium", "info");
       process.env.OnStatus = true;
